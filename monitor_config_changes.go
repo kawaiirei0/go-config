@@ -3,16 +3,19 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"reflect"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // Unmarshal 解析配置到结构体
 func (m *Manager) Unmarshal() error {
 	var newConfig Config
 	if err := m.vp.Unmarshal(&newConfig); err != nil {
-		m.logger.Error.Exec(fmt.Sprintf("failed to unmarshal new config: %v", err))
+		m.hooks.Handles[Error].Exec(HookContext{
+			Message: fmt.Sprintf("failed to unmarshal new config: %v", err),
+		})
 		return errors.New(fmt.Sprintf("failed to unmarshal new config: %v", err))
 	}
 
@@ -23,7 +26,9 @@ func (m *Manager) Unmarshal() error {
 	changes := make(map[string][2]any)
 
 	if !compareStructs(oldConfig, newConfig, "", changes) {
-		m.logger.Error.Exec("config type mismatch, changes blocked")
+		m.hooks.Handles[Error].Exec(HookContext{
+			Message: "config type mismatch, changes blocked",
+		})
 		return errors.New(fmt.Sprintf("config type mismatch, changes blocked"))
 	}
 
@@ -46,11 +51,15 @@ func (m *Manager) monitorConfigChanges(handles []HandlerFunc) {
 		}
 		m.lastChange = time.Now()
 
-		m.logger.Debug.Exec(fmt.Sprintf("[config] 检测到文件变更: %s", e.Name))
+		m.hooks.Handles[Info].Exec(HookContext{
+			Message: fmt.Sprintf("[config] 检测到文件变更: %s", e.Name),
+		})
 
 		// 重新加载配置
 		if err := m.vp.ReadInConfig(); err != nil {
-			m.logger.Debug.Exec(fmt.Sprintf("[config] 重新加载失败: %v", err))
+			m.hooks.Handles[Info].Exec(HookContext{
+				Message: fmt.Sprintf("[config] 重新加载失败: %v", err),
+			})
 			return
 		}
 

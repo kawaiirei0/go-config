@@ -34,8 +34,8 @@ func main() {
     // 初始化配置管理器
     manager := config.Default()
     
-    // 加载配置文件
-    err := manager.LoadConfig()
+    // 初始化加载配置文件
+    err := manager.Init()
     if err != nil {
         panic(err)
     }

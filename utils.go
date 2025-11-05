@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 )
 
-// LoadConfigPath 返回配置文件路径
-func LoadConfigPath(p ...string) string {
-	path, _ := filepath.Abs(p[0])
+// filepathABs 返回配置文件路径
+func filepathAbs(p string) string {
+	path, _ := filepath.Abs(p)
 	return path
 }

@@ -2,59 +2,68 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 )
 
-func (m *Manager) Init(managerLogger *Logger, opt *Option, handles ...HandlerFunc) error {
+func (m *Manager) SetOption(opts *Option) {
 	// 初始化设置选项默认值
-	if opt != nil {
-		opt.defaultValueInit()
+	if opts != nil {
+		opts.setDefaultValue()
 	} else {
-		opt = NewOption().defaultValueInit()
+		opts = NewOption()
 	}
+	m.opts = opts
+}
 
-	// 拿到设置选项
-	m.opt = opt
-
-	// 管理器拿到日志实例
-	m.logger = managerLogger
+func (m *Manager) Init(handles ...HandlerFunc) error {
+	// 如果option不存在配置则设置默认选项
+	// m.opts.setDefaultValue()
 
 	// hook init
-	m.logger.Debug.Exec("[config] 开始初始化")
+	m.hooks.Handles[InitHook].Exec(HookContext{
+		Message: "开始初始化",
+	})
 
-	// 设置防抖
-	m.debounceDur = m.opt.DebounceDur.ToValue()
+	// setting debouncedur
+	m.debounceDur = m.opts.DebounceDur.ToValue()
 
-	absPath, _ := filepath.Abs(m.opt.Path.ToValue())
+	absPath := filepathAbs(m.opts.Path.ToValue())
 
-	m.vp.SetConfigType(m.opt.FileType.ToValue()) // 设置文件类型
+	m.vp.SetConfigType(m.opts.FileType.ToValue()) // 设置文件类型
 	// 根据环境加载不同配置文件 设置文件名
-	if m.opt.Env != "" {
+	if m.opts.Env != "" {
 		// 设置文件名.环境名
-		m.vp.SetConfigName(fmt.Sprintf("%s.%s", m.opt.Filename, m.opt.Env))
+		m.vp.SetConfigName(fmt.Sprintf("%s.%s", m.opts.Filename, m.opts.Env))
 	} else {
 		// 设置文件名
-		m.vp.SetConfigName(m.opt.Filename.ToValue())
+		m.vp.SetConfigName(m.opts.Filename.ToValue())
 	}
 	m.vp.AddConfigPath(absPath) // 设置文件路径
 
 	// 如果文件不存在，则创建默认配置文件
-	if err := m.ensureConfigFile(); err != nil {
-		m.logger.Error.Exec(fmt.Sprintf("[config] 创建默认配置文件失败: %v", err))
+	if err := m.ensureConfigFile(m.opts); err != nil {
+		m.hooks.Handles[Error].Exec(HookContext{
+			Message: fmt.Sprintf("[config] 创建默认配置文件失败: %v", err),
+		})
 		return err
 	}
 
 	// 读取配置文件
 	if err := m.vp.ReadInConfig(); err != nil {
-		m.logger.Error.Exec(fmt.Sprintf("[config] 加载配置失败: %v", err))
+		m.hooks.Handles[Error].Exec(HookContext{
+			Message: fmt.Sprintf("[config] 加载配置失败: %v", err),
+		})
 		return err
 	}
 
-	m.logger.Debug.Exec(fmt.Sprintf("[config] 已加载配置文件: %s", m.vp.ConfigFileUsed()))
+	m.hooks.Handles[Info].Exec(HookContext{
+		Message: fmt.Sprintf("[config] 已加载配置文件: %s", m.vp.ConfigFileUsed()),
+	})
 
 	// 解析配置到结构体
 	if err := m.Unmarshal(); err != nil {
-		m.logger.Error.Exec(fmt.Sprintf("[config] 解析配置到结构体Error: %s", err.Error()))
+		m.hooks.Handles[Error].Exec(HookContext{
+			Message: fmt.Sprintf("[config] 解析配置到结构体失败 Error: %s", err.Error()),
+		})
 		return err
 	}
 

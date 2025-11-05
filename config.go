@@ -11,5 +11,11 @@ type Config struct {
 
 func NewConfig() *Config {
 	//configure.DBConfig{}
-	return &Config{}
+	return &Config{
+		App: configure.App{
+			Name:        "qwq",
+			Version:     "1.0.0",
+			Description: "QWQ App.",
+		},
+	}
 }

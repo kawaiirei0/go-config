@@ -14,9 +14,10 @@ type Manager struct {
 	rwMutex             sync.RWMutex  // 读写锁
 	lastChange          time.Time     // 上次触发时间（用于防抖）
 	debounceDur         time.Duration // 防抖间隔
-	logger              *Logger       // 日志hook
-	opt                 *Option       // 设置选项
+	hooks               *Hook         // hook
+	opts                *Option       // 设置选项
 	validateConfigValue bool          // 验证
+	defaultConfig       any           // default config
 }
 
 var globalManager = utils.NewSingleton[Manager]()
@@ -37,5 +38,7 @@ func NewManager() *Manager {
 		config:     NewConfig(),
 		vp:         viper.New(),
 		lastChange: time.Time{},
+		// opts:       NewOption(),
+		hooks: NewHook(),
 	}
 }

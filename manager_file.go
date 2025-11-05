@@ -2,21 +2,22 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 // 在 Manager.Init() 中增加判断
-func (m *Manager) ensureConfigFile() error {
-	absPath, _ := filepath.Abs(m.opt.Path.ToValue())
+func (m *Manager) ensureConfigFile(opts *Option) error {
+	absPath, _ := filepath.Abs(opts.Path.ToValue())
 	if err := os.MkdirAll(absPath, 0755); err != nil {
 		return fmt.Errorf("failed to create config dir: %w", err)
 	}
 
 	cfgFile := filepath.Join(
 		absPath,
-		fmt.Sprintf("%s.%s.%s", m.opt.Filename.ToValue(), m.opt.Env.ToValue(), m.opt.FileType.ToValue()),
+		fmt.Sprintf("%s.%s.%s", opts.Filename.ToValue(), opts.Env.ToValue(), opts.FileType.ToValue()),
 	)
 
 	_, err := os.Stat(cfgFile)
@@ -33,7 +34,9 @@ func (m *Manager) ensureConfigFile() error {
 			return fmt.Errorf("failed to write default config file: %w", err)
 		}
 
-		m.logger.Info.Exec(fmt.Sprintf("[config] 默认配置文件已生成: %s", cfgFile))
+		m.hooks.Handles[Info].Exec(HookContext{
+			Message: fmt.Sprintf("[config] 默认配置文件已生成: %s", cfgFile),
+		})
 	}
 
 	m.vp.SetConfigFile(cfgFile)
